@@ -1,0 +1,16 @@
+# Dependencias (Esto es lo más importante)
+node_modules/
+
+# Logs de error y debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Variables de entorno (¡NO SUBAS TUS CLAVES!)
+.env
+
+# Archivos de configuración del editor y sistema
+.DS_Store          # Específico de Mac (tu caso)
+.vscode/           # Configuración de VS Code
+.idea/             # Configuración de IntelliJ IDEA
+*.log
