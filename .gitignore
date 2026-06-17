@@ -13,4 +13,5 @@ yarn-error.log*
 .DS_Store          # Específico de Mac (tu caso)
 .vscode/           # Configuración de VS Code
 .idea/             # Configuración de IntelliJ IDEA
-*.log
+*.log.env
+node_modules
