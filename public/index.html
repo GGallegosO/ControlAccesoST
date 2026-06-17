@@ -30,7 +30,12 @@
             <button type="submit" class="btn btn-primary w-100">Ingresar</button>
         </form>
         <div class="mt-3 text-center small text-muted">
-            <p>Pruebas:<br>Admin: admin@santotomas.cl / hash_admin_123<br>Funcionario: pedro@santotomas.cl / hash_pedro_123</p>
+            <p><strong>Credenciales de Prueba:</strong></p>
+            <p class="mb-1">🔑 Contraseña para todos: <code>1234</code></p>
+            <hr class="my-2">
+            <p class="mb-1">👤 Admin: <code>admin@santotomas.cl</code></p>
+            <p class="mb-1">👨‍💻 Funcionario: <code>pedro@santotomas.cl</code></p>
+            <p class="mb-1">👮 Guardia: <code>juan@santotomas.cl</code></p>
         </div>
     </div>
 
@@ -83,16 +88,23 @@
         function showDashboard(user) {
             loginSection.classList.add('hidden');
             dashboardSection.classList.remove('hidden');
-            welcomeMsg.innerText = `Hola, ${user.nombre} (${user.rol.toUpperCase()})`;
+            
+            // NORMALIZAR EL ROL A MINÚSCULAS AQUÍ
+            const rolNormalizado = user.rol ? user.rol.toLowerCase() : '';
+            
+            welcomeMsg.innerText = `Hola, ${user.nombre} (${rolNormalizado.toUpperCase()})`;
 
             let content = '';
-            if (user.rol === 'admin') {
-                content = '<div class="alert alert-success">Panel de Administrador: Acceso total a reportes y usuarios.</div>';
-                // Aquí iría la lógica específica del admin
-            } else if (user.rol === 'funcionario') {
-                content = '<div class="alert alert-info">Panel de Funcionario: Gestión de eventos y asistencia de su unidad.</div>';
-            } else if (user.rol === 'guardia') {
-                content = '<div class="alert alert-warning">Panel de Guardia: Registro de ingresos efectivos.</div>';
+            // Ahora las comparaciones funcionarán porque usamos la variable normalizada
+            if (rolNormalizado === 'admin') {
+                content = '<div class="alert alert-success"><h4>Panel de Administrador</h4><p>Acceso total a reportes, usuarios y unidades.</p></div>';
+                // Aquí llamaremos luego a la función para cargar estadísticas
+            } else if (rolNormalizado === 'funcionario') {
+                content = '<div class="alert alert-info"><h4>Panel de Funcionario</h4><p>Gestión de eventos y asistencia de su unidad.</p></div>';
+            } else if (rolNormalizado === 'guardia') {
+                content = '<div class="alert alert-warning"><h4>Panel de Guardia</h4><p>Registro de ingresos efectivos del día.</p></div>';
+            } else {
+                content = '<div class="alert alert-danger">Rol de usuario no reconocido.</div>';
             }
             roleContent.innerHTML = content;
         }
