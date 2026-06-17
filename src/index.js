@@ -6,6 +6,7 @@ require('./config/database');
 
 // Importar rutas
 const authRoutes = require('./routes/authRoutes');
+const visitaRoutes = require('./routes/visitaRoutes');
 
 const app = express();
 
@@ -19,6 +20,7 @@ app.use(express.static(path.join(__dirname, '../public')));
 
 // Rutas de la API
 app.use('/api/auth', authRoutes);
+app.use('/api/visitas', visitaRoutes);
 
 // Ruta de prueba
 app.get('/api', (req, res) => {
