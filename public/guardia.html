@@ -17,33 +17,114 @@
     </nav>
 
     <div class="container mt-4">
-        <div class="alert alert-warning">
+        
+        <div id="panel-agrupacion" class="alert alert-info d-none shadow-sm sticky-top mb-3">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h5 class="mb-0">👥 Ingreso Grupal en Vehículo</h5>
+                    <small>Selecciona en la tabla a los visitantes que vienen en este auto.</small>
+                </div>
+                <div>
+                    <button class="btn btn-secondary btn-sm me-2" onclick="cancelarAgrupacion()">Cancelar</button>
+                    <button class="btn btn-primary btn-sm" onclick="confirmarIngresoGrupal()">✅ Dar Ingreso a Todos</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="alert alert-warning shadow-sm border-0 mb-3" role="alert">
             <h4 class="mb-0">📋 Registro de Visitas de Hoy</h4>
         </div>
 
-        <div class="table-responsive bg-white p-3 rounded shadow-sm mt-3">
-            <table class="table table-hover table-bordered">
+        <div class="row mb-3 mt-4">
+            <div class="col-md-6">
+                <input type="text" id="input-busqueda" class="form-control shadow-sm" 
+                    placeholder="🔍 Buscar visitante por Nombre o RUT..." 
+                    oninput="filtrarTabla()">
+            </div>
+        </div>
+
+        <div class="table-responsive bg-white rounded shadow-sm">
+            <table class="table table-hover table-bordered align-middle bg-white mb-0">
                 <thead class="table-light">
                     <tr>
-                        <th>Hora</th>
-                        <th>Visitante</th>
-                        <th>RUT/Pasaporte</th>
-                        <th>Anfitrión</th>
-                        <th>Unidad</th>
-                        <th>Vehículo</th>
-                        <th>Estado</th>
-                        <th>Acciones</th>
+                        <th onclick="ordenarTabla('hora_visita')" class="cursor-pointer user-select-none" style="cursor: pointer;">Hora ↕️</th>
+                        <th onclick="ordenarTabla('visitante')" class="cursor-pointer user-select-none" style="cursor: pointer;">Visitante ↕️</th>
+                        <th onclick="ordenarTabla('rut_pasaporte')" class="cursor-pointer user-select-none" style="cursor: pointer;">RUT/Pasaporte ↕️</th>
+                        <th onclick="ordenarTabla('funcionario_anfitrion')" class="cursor-pointer user-select-none" style="cursor: pointer;">Anfitrión ↕️</th>
+                        <th onclick="ordenarTabla('unidad')" class="cursor-pointer user-select-none" style="cursor: pointer;">Unidad ↕️</th>
+                        <th style="min-width: 170px;">Vehículo</th>
+                        <th onclick="ordenarTabla('estado_visita')" class="cursor-pointer user-select-none" style="cursor: pointer;">Estado ↕️</th>
+                        <th class="text-center">Acciones</th>
                     </tr>
                 </thead>
                 <tbody id="cuerpo-tabla-visitas">
-                    <tr>
-                        <td colspan="7" class="text-center text-muted">Cargando visitas de hoy...</td>
-                    </tr>
-                </tbody>
+                    </tbody>
             </table>
+        </div>
+
+    </div> <div class="modal fade" id="modalAuto" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-sm">
+            <div class="modal-content">
+                <div class="modal-header bg-dark text-white py-2">
+                    <h6 class="modal-title mb-0">🚗 Detalles del Vehículo</h6>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body text-center">
+                    <h4 id="detalle-patente" class="mb-3 text-primary border rounded py-1 bg-light"></h4>
+                    <ul class="list-unstyled text-start ms-3 mb-2">
+                        <li><strong>Marca:</strong> <span id="detalle-marca"></span></li>
+                        <li><strong>Modelo:</strong> <span id="detalle-modelo"></span></li>
+                        <li><strong>Color:</strong> <span id="detalle-color"></span></li>
+                    </ul>
+                    
+                    <div class="bg-light p-2 rounded text-start mb-3 border">
+                        <h6 class="mb-1 text-secondary">👥 Ocupantes en este vehículo:</h6>
+                        <ul id="lista-ocupantes" class="mb-0 small text-dark ps-3">
+                            </ul>
+                    </div>
+
+                    <hr>
+                    <button class="btn btn-outline-danger btn-sm w-100" id="btn-quitar-auto" onclick="confirmarQuitarAuto()">
+                        ❌ Bajar de este vehículo
+                    </button>
+                </div>
+            </div>
         </div>
     </div>
 
+    <div class="modal fade" id="modalAgregarAuto" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-sm">
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white py-2">
+                    <h6 class="modal-title mb-0">🚘 Registrar Vehículo</h6>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="form-agregar-auto">
+                        <div class="mb-2">
+                            <label class="form-label small mb-1">Patente *</label>
+                            <input type="text" id="add-patente" class="form-control form-control-sm text-uppercase" placeholder="ABCD-12" required>
+                        </div>
+                        <div class="mb-2">
+                            <label class="form-label small mb-1">Marca *</label>
+                            <input type="text" id="add-marca" class="form-control form-control-sm" placeholder="Hyundai" required>
+                        </div>
+                        <div class="mb-2">
+                            <label class="form-label small mb-1">Modelo</label>
+                            <input type="text" id="add-modelo" class="form-control form-control-sm" placeholder="Accent">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label small mb-1">Color</label>
+                            <input type="text" id="add-color" class="form-control form-control-sm" placeholder="Blanco">
+                        </div>
+                        <button type="submit" class="btn btn-primary btn-sm w-100">💾 Guardar y Vincular</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="/guardia.js"></script>
 </body>
 </html>
