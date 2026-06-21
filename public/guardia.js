@@ -48,7 +48,8 @@ document.addEventListener('DOMContentLoaded', () => {
 //  Solo descarga los datos de la Base de Datos
 async function cargarVisitasHoy() {
     try {
-        const respuesta = await fetch('/api/visitas/guardia/hoy');
+        // Agregamos { cache: 'no-store' } para obligar al navegador a buscar los datos frescos
+        const respuesta = await fetch('/api/visitas/guardia/hoy', { cache: 'no-store' });
         const resultado = await respuesta.json();
         
         // Guardamos todo en memoria
@@ -89,9 +90,15 @@ function renderizarTabla() {
             // Si estamos agrupando, el conductor siempre se queda visible
             if (modoAgrupacion && v.id_visita === idConductorActual) return true;
             
-            // Buscar por nombre o rut
-            return v.visitante.toLowerCase().includes(textoBusqueda) || 
-                    v.rut_pasaporte.toLowerCase().includes(textoBusqueda);
+            // Preparamos los textos (evitando errores si vienen nulos)
+            const nombre = v.visitante ? v.visitante.toLowerCase() : '';
+            const rut = v.rut_pasaporte ? v.rut_pasaporte.toLowerCase() : '';
+            const patente = v.auto_patente ? v.auto_patente.toLowerCase() : '';
+            
+            // Buscar coincidencias en cualquiera de los 3 campos
+            return nombre.includes(textoBusqueda) || 
+                rut.includes(textoBusqueda) ||
+                patente.includes(textoBusqueda);
         });
     }
 
@@ -215,7 +222,8 @@ async function marcarIngreso(idVisita) {
 
 // Función para deshacer un ingreso erróneo
 async function revertirIngreso(idVisita) {
-    if (!confirm('¿Estás seguro de deshacer este ingreso y volver a marcarlo como Programado?')) {
+    // Actualizamos el mensaje para que el guardia sepa que el auto también se borrará
+    if (!confirm('¿Estás seguro de deshacer este ingreso? (Se eliminarán los datos del vehículo asociado)')) {
         return; 
     }
 
@@ -228,7 +236,7 @@ async function revertirIngreso(idVisita) {
         const resultado = await respuesta.json();
 
         if (resultado.success) {
-            cargarVisitasHoy(); // Recargamos la tabla al instante
+            cargarVisitasHoy(); // Ahora sí traerá los datos fresquitos de la BD
         } else {
             alert('Error: ' + resultado.message);
         }

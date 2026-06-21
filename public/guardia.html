@@ -38,7 +38,7 @@
         <div class="row mb-3 mt-4">
             <div class="col-md-6">
                 <input type="text" id="input-busqueda" class="form-control shadow-sm" 
-                    placeholder="🔍 Buscar visitante por Nombre o RUT..." 
+                    placeholder="🔍 Buscar visitante por Nombre, RUT o Patente..." 
                     oninput="filtrarTabla()">
             </div>
         </div>
@@ -47,14 +47,14 @@
             <table class="table table-hover table-bordered align-middle bg-white mb-0">
                 <thead class="table-light">
                     <tr>
-                        <th onclick="ordenarTabla('hora_visita')" class="cursor-pointer user-select-none" style="cursor: pointer;">Hora ↕️</th>
-                        <th onclick="ordenarTabla('visitante')" class="cursor-pointer user-select-none" style="cursor: pointer;">Visitante ↕️</th>
-                        <th onclick="ordenarTabla('rut_pasaporte')" class="cursor-pointer user-select-none" style="cursor: pointer;">RUT/Pasaporte ↕️</th>
-                        <th onclick="ordenarTabla('funcionario_anfitrion')" class="cursor-pointer user-select-none" style="cursor: pointer;">Anfitrión ↕️</th>
-                        <th onclick="ordenarTabla('unidad')" class="cursor-pointer user-select-none" style="cursor: pointer;">Unidad ↕️</th>
-                        <th style="min-width: 170px;">Vehículo</th>
-                        <th onclick="ordenarTabla('estado_visita')" class="cursor-pointer user-select-none" style="cursor: pointer;">Estado ↕️</th>
-                        <th class="text-center">Acciones</th>
+                        <th onclick="ordenarTabla('hora_visita')" class="cursor-pointer user-select-none text-nowrap, text-center text-nowrap" style="cursor: pointer;">Hora ↕️</th>
+                        <th onclick="ordenarTabla('visitante')" class="cursor-pointer user-select-none text-nowrap, text-center text-nowrap" style="cursor: pointer;">Visitante ↕️</th>
+                        <th onclick="ordenarTabla('rut_pasaporte')" class="cursor-pointer user-select-none text-nowrap, text-center text-nowrap" style="cursor: pointer;">RUT/Pasaporte ↕️</th>
+                        <th onclick="ordenarTabla('funcionario_anfitrion')" class="cursor-pointer user-select-none text-nowrap, text-center text-nowrap" style="cursor: pointer;">Anfitrión ↕️</th>
+                        <th onclick="ordenarTabla('unidad')" class="cursor-pointer user-select-none text-nowrap, text-center text-nowrap" style="cursor: pointer;">Unidad ↕️</th>
+                        <th onclick="ordenarTabla('auto_patente')" class="cursor-pointer user-select-none text-nowrap, text-center text-nowrap" style="cursor: pointer; min-width: 170px;">Vehículo ↕️</th>
+                        <th onclick="ordenarTabla('estado_visita')" class="cursor-pointer user-select-none text-nowrap, text-center text-nowrap" style="cursor: pointer;">Estado ↕️</th>
+                        <th class="text-center text-nowrap">Acciones</th>
                     </tr>
                 </thead>
                 <tbody id="cuerpo-tabla-visitas">
