@@ -9,15 +9,16 @@ exports.login = async (req, res) => {
     }
 
     try {
+        
         const query = `
             SELECT u.id_usuario, u.username, u.password_hash, u.nombre_completo, 
-                r.nombre as rol, u.id_unidad
+                r.nombre as rol, u.id_unidad, un.nombre as unidad_nombre
             FROM USUARIO u
             JOIN ROL r ON u.id_rol = r.id_rol
+            LEFT JOIN UNIDAD un ON u.id_unidad = un.id_unidad
             WHERE u.username = ?
         `;
 
-        // Ahora db.query devuelve una promesa directamente
         const results = await db.query(query, [username]);
 
         if (results.length === 0) {
@@ -26,7 +27,6 @@ exports.login = async (req, res) => {
 
         const user = results[0];
 
-        // Validación segura con bcrypt
         const isValid = await bcrypt.compare(password, user.password_hash);
 
         if (!isValid) {
@@ -40,8 +40,9 @@ exports.login = async (req, res) => {
                 id: user.id_usuario,
                 nombre: user.nombre_completo,
                 username: user.username,
-                rol: user.rol.toLowerCase(), // Aseguramos minúsculas para el frontend
-                id_unidad: user.id_unidad
+                rol: user.rol.toLowerCase(), 
+                id_unidad: user.id_unidad,
+                unidad: user.unidad_nombre 
             }
         });
 

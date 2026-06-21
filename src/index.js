@@ -4,9 +4,13 @@ const path = require('path');
 require('dotenv').config();
 require('./config/database');
 
+
+
 // Importar rutas
 const authRoutes = require('./routes/authRoutes');
 const visitaRoutes = require('./routes/visitaRoutes');
+const funcionarioRoutes = require('./routes/funcionarioRoutes');
+
 
 const app = express();
 
@@ -21,6 +25,8 @@ app.use(express.static(path.join(__dirname, '../public')));
 // Rutas de la API
 app.use('/api/auth', authRoutes);
 app.use('/api/visitas', visitaRoutes);
+app.use('/api/funcionario', funcionarioRoutes);
+
 
 // Ruta de prueba
 app.get('/api', (req, res) => {
