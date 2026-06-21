@@ -1,0 +1,19 @@
+
+
+/* Estilo para el punto indicador de eventos en el calendario */
+.dia-con-evento {
+    position: relative;
+    font-weight: bold;
+}
+
+.dia-con-evento::after {
+    content: '';
+    position: absolute;
+    bottom: 3px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 5px;
+    height: 5px;
+    background-color: #198754; /* Verde Bootstrap (success) */
+    border-radius: 50%;
+}
