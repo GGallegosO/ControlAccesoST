@@ -1,11 +1,30 @@
 const db = require('../config/database'); 
+const { validarRut, formatearRut } = require('../utils/validador'); 
 
 exports.crearEvento = async (req, res) => {
     try {
-        // Agregamos coanfitriones a la desestructuración del paquete que viene del frontend
         const { motivo, fecha, hora, id_anfitrion, id_unidad, invitados, coanfitriones } = req.body;
 
-        // Iteramos sobre cada invitado que viene en el arreglo
+        // =======================================================
+        // CAPA DE VALIDACIÓN PREVIA (SEGURIDAD Y FORMATO)
+        // =======================================================
+        // Revisamos a todos los invitados antes de tocar la base de datos
+        for (let inv of invitados) {
+            if (inv.tipo === 'RUT') {
+                if (!validarRut(inv.identificacion)) {
+                    // Si el RUT es inválido, abortamos todo y avisamos al funcionario
+                    return res.status(400).json({ 
+                        success: false, 
+                        message: `Error: El RUT ingresado para ${inv.nombre} (${inv.identificacion}) no es válido.` 
+                    });
+                }
+                // Si es válido, lo formateamos bonito (ej: 19.876.543-2) para guardarlo estándar
+                inv.identificacion = formatearRut(inv.identificacion);
+            }
+        }
+        // =======================================================
+
+        // Iteramos sobre cada invitado que viene en el arreglo para guardarlos
         for (let inv of invitados) {
             
             let idVisitante = null;
@@ -32,7 +51,6 @@ exports.crearEvento = async (req, res) => {
                 VALUES (?, ?, ?, ?, ?, ?, 'PROGRAMADA')
             `;
             
-            // Aquí guardamos el resultado de la inserción para atrapar el ID autoincremental
             const resultadoVisita = await db.query(queryInsertarVisita, [
                 idVisitante, 
                 id_anfitrion, 
@@ -45,7 +63,6 @@ exports.crearEvento = async (req, res) => {
             const idNuevaVisita = resultadoVisita.insertId;
 
             // VINCULAR A LOS CO-ANFITRIONES
-            // Si el usuario seleccionó colegas, los insertamos en la tabla puente
             if (coanfitriones && coanfitriones.length > 0) {
                 for (let idColega of coanfitriones) {
                     await db.query(
@@ -63,11 +80,9 @@ exports.crearEvento = async (req, res) => {
     }
 };
 
-
-
 exports.obtenerEventos = async (req, res) => {
     try {
-        const { unidad, fecha, id_usuario } = req.query; // ¡Agregamos id_usuario!
+        const { unidad, fecha, id_usuario } = req.query; 
         
         const query = `
             SELECT v.id_visita, v.id_unidad, v.hora_visita, vi.nombre_completo AS visitante, v.descripcion AS motivo, v.estado_visita,
@@ -77,7 +92,6 @@ exports.obtenerEventos = async (req, res) => {
             JOIN VISITANTE vi ON v.id_visitante = vi.id_visitante
             LEFT JOIN VISITA_ANFITRION va ON v.id_visita = va.id_visita
             LEFT JOIN USUARIO u ON va.id_usuario = u.id_usuario
-            -- MAGIA SQL: Filtramos por la unidad del creador O por si el usuario es co-anfitrión
             WHERE (v.id_unidad = ? OR v.id_visita IN (SELECT id_visita FROM VISITA_ANFITRION WHERE id_usuario = ?)) 
             AND v.fecha_visita = ?
             GROUP BY v.id_visita, v.id_unidad, v.hora_visita, vi.nombre_completo, v.descripcion, v.estado_visita
@@ -94,7 +108,7 @@ exports.obtenerEventos = async (req, res) => {
 
 exports.obtenerMetricas = async (req, res) => {
     try {
-        const { unidad, fecha, id_usuario } = req.query; // Ahora recibimos id_usuario
+        const { unidad, fecha, id_usuario } = req.query; 
         
         const query = `
             SELECT 
@@ -112,7 +126,6 @@ exports.obtenerMetricas = async (req, res) => {
         res.status(500).json({ success: false, message: 'Error del servidor' });
     }
 };
-
 
 exports.obtenerFechasEventos = async (req, res) => {
     try {
@@ -138,7 +151,6 @@ exports.obtenerFechasEventos = async (req, res) => {
 exports.obtenerColegas = async (req, res) => {
     try {
         const { excluir_id } = req.query;
-        // Buscamos a todos los funcionarios (rol 2) que no sean el usuario actual
         const query = `
             SELECT u.id_usuario, u.nombre_completo, un.nombre as unidad 
             FROM USUARIO u
@@ -153,26 +165,21 @@ exports.obtenerColegas = async (req, res) => {
     }
 };
 
-
-
-
 exports.agregarCoanfitrionesExtra = async (req, res) => {
     try {
         const { id_visita_referencia, coanfitriones } = req.body;
 
-        // 1. Buscamos el evento original guiándonos por el ticket de referencia
         const queryReferencia = 'SELECT id_unidad, fecha_visita, hora_visita, descripcion FROM VISITA WHERE id_visita = ?';
         const refResult = await db.query(queryReferencia, [id_visita_referencia]);
         if (refResult.length === 0) return res.status(404).json({ success: false, message: 'Evento no encontrado' });
         const ref = refResult[0];
 
-        // 2. Buscamos a TODOS los visitantes de esa reunión (ahora usando la unidad correcta)
         const queryVisitas = 'SELECT id_visita FROM VISITA WHERE id_unidad = ? AND fecha_visita = ? AND hora_visita = ? AND descripcion = ?';
         const visitas = await db.query(queryVisitas, [ref.id_unidad, ref.fecha_visita, ref.hora_visita, ref.descripcion]);
 
         if (visitas.length > 0) {
             const idsVisitas = visitas.map(v => v.id_visita);
-            await db.query('DELETE FROM VISITA_ANFITRION WHERE id_visita IN (?)', [idsVisitas]); // Limpiar
+            await db.query('DELETE FROM VISITA_ANFITRION WHERE id_visita IN (?)', [idsVisitas]); 
 
             if (coanfitriones && coanfitriones.length > 0) {
                 for (let idVisita of idsVisitas) {
@@ -190,13 +197,10 @@ exports.agregarCoanfitrionesExtra = async (req, res) => {
     }
 };
 
-
-
 exports.cancelarVisita = async (req, res) => {
     try {
         const { id_visita } = req.params;
         
-        // Cambiamos el estado a CANCELADA solo si la visita existe
         const query = "UPDATE VISITA SET estado_visita = 'CANCELADA' WHERE id_visita = ?";
         await db.query(query, [id_visita]);
         
