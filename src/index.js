@@ -10,6 +10,10 @@ require('./config/database');
 const authRoutes = require('./routes/authRoutes');
 const visitaRoutes = require('./routes/visitaRoutes');
 const funcionarioRoutes = require('./routes/funcionarioRoutes');
+const adminRoutes = require('./routes/adminRoutes');
+
+
+
 
 
 const app = express();
@@ -26,6 +30,7 @@ app.use(express.static(path.join(__dirname, '../public')));
 app.use('/api/auth', authRoutes);
 app.use('/api/visitas', visitaRoutes);
 app.use('/api/funcionario', funcionarioRoutes);
+app.use('/api/admin', adminRoutes);
 
 
 // Ruta de prueba
