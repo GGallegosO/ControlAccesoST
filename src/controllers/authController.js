@@ -1,5 +1,6 @@
 const db = require('../config/database');
 const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
 
 exports.login = async (req, res) => {
     const { username, password } = req.body;
@@ -9,7 +10,6 @@ exports.login = async (req, res) => {
     }
 
     try {
-        
         const query = `
             SELECT u.id_usuario, u.username, u.password_hash, u.nombre_completo, 
                 r.nombre as rol, u.id_unidad, un.nombre as unidad_nombre
@@ -26,16 +26,28 @@ exports.login = async (req, res) => {
         }
 
         const user = results[0];
-
         const isValid = await bcrypt.compare(password, user.password_hash);
 
         if (!isValid) {
             return res.status(401).json({ success: false, message: 'Credenciales inválidas' });
         }
 
+        // ==========================================
+        // CREACIÓN DEL TOKEN JWT
+        // ==========================================
+        const tokenPayload = {
+            id: user.id_usuario,
+            rol: user.rol.toLowerCase()
+        };
+
+        const token = jwt.sign(tokenPayload, process.env.JWT_SECRET, {
+            expiresIn: '8h' 
+        });
+
         res.json({
             success: true,
             message: 'Login exitoso',
+            token: token, // El token ya va directo al frontend
             user: {
                 id: user.id_usuario,
                 nombre: user.nombre_completo,

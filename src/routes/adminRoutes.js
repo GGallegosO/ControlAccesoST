@@ -1,6 +1,11 @@
 const express = require('express');
 const router = express.Router();
 const adminController = require('../controllers/adminController');
+const { verificarToken, esAdmin } = require('../middlewares/authMiddleware');
+
+// BLINDAJE GLOBAL: Cualquier petición a este set de rutas debe tener un Token válido y rol de Admin
+router.use(verificarToken);
+router.use(esAdmin);
 
 // Dashboard y Reportes
 router.get('/dashboard/metricas', adminController.getDashboardMetrics);

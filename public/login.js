@@ -1,5 +1,3 @@
-
-
 const loginForm = document.getElementById('login-form');
 const errorMsg = document.getElementById('error-msg');
 
@@ -25,7 +23,12 @@ loginForm.addEventListener('submit', async (e) => {
         const data = await response.json();
 
         if (data.success) {
+            // Guardamos los datos del usuario
             sessionStorage.setItem('user', JSON.stringify(data.user));
+            
+            // 🔥 LA PIEZA CLAVE: Guardamos el Token de seguridad
+            sessionStorage.setItem('token', data.token);
+            
             redirigirSegunRol(data.user.rol);
         } else {
             showError(data.message);
@@ -47,7 +50,9 @@ function redirigirSegunRol(rol) {
         window.location.href = '/guardia.html';
     } else {
         showError('Rol no reconocido');
+        // Limpiamos todo si hay error
         sessionStorage.removeItem('user');
+        sessionStorage.removeItem('token'); 
     }
 }
 
