@@ -3,7 +3,7 @@ const cors = require('cors');
 const path = require('path');
 require('dotenv').config();
 require('./config/database');
-
+require('./jobs/cronJobs');
 
 
 // Importar rutas
