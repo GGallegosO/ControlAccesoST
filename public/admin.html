@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Panel Administrador - Control Acceso SJ</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="/style.css">
+</head>
+<body class="bg-light">
+
+    <nav class="navbar navbar-dark bg-dark px-3 shadow-sm">
+        <span class="navbar-brand mb-0 h1">⚙️ Módulo Administrador - Centro de Control</span>
+        <div>
+            <span id="nombre-admin" class="text-white me-3 fw-bold"></span>
+            <button id="logout-btn" class="btn btn-sm btn-outline-light">Cerrar Sesión</button>
+        </div>
+    </nav>
+
+    <div class="container mt-4">
+        
+        <ul class="nav nav-tabs mb-4" id="adminTabs" role="tablist">
+            <li class="nav-item"><button class="nav-link active fw-bold" id="tab-dashboard" data-bs-toggle="tab" data-bs-target="#dashboard" type="button" role="tab">📊 Dashboard Global</button></li>
+            <li class="nav-item"><button class="nav-link fw-bold" id="tab-reportes" data-bs-toggle="tab" data-bs-target="#reportes" type="button" role="tab">📈 Reportes de Visitas</button></li>
+            <li class="nav-item"><button class="nav-link fw-bold" id="tab-usuarios" data-bs-toggle="tab" data-bs-target="#usuarios" type="button" role="tab">👥 Gestión de Usuarios</button></li>
+            <li class="nav-item"><button class="nav-link fw-bold" id="tab-unidades" data-bs-toggle="tab" data-bs-target="#unidades" type="button" role="tab">🏢 Gestión de Unidades</button></li>
+        </ul>
+
+        <div class="tab-content" id="adminTabsContent">
+
+            <div class="tab-pane fade show active" id="dashboard" role="tabpanel">
+                <div class="row mb-4">
+                    <div class="col-md-3">
+                        <div class="card bg-primary text-white shadow-sm border-0 h-100">
+                            <div class="card-body">
+                                <h6 class="text-uppercase small fw-bold opacity-75">Visitas Programadas Hoy</h6>
+                                <h2 class="display-6 fw-bold mb-0" id="dash-hoy">0</h2>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card bg-dark text-white shadow-sm border-0 h-100">
+                            <div class="card-body">
+                                <h6 class="text-uppercase small fw-bold opacity-75">Total Visitas del Mes</h6>
+                                <h2 class="display-6 fw-bold mb-0" id="dash-mes">0</h2>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card bg-success text-white shadow-sm border-0 h-100">
+                            <div class="card-body">
+                                <h6 class="text-uppercase small fw-bold opacity-75">Efectividad de Ingresos</h6>
+                                <h2 class="display-6 fw-bold mb-0"><span id="dash-efectividad">0</span>%</h2>
+                                <small class="opacity-75">Tasa de asistencia real</small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card bg-info text-dark shadow-sm border-0 h-100">
+                            <div class="card-body">
+                                <h6 class="text-uppercase small fw-bold opacity-75">Mayor Demanda (Mes)</h6>
+                                <h4 class="fw-bold mb-0 text-truncate" id="dash-top-unidad">Cargando...</h4>
+                                <small class="fw-bold" id="dash-top-total">0 visitas</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="tab-pane fade" id="reportes" role="tabpanel">
+                <div class="card shadow-sm border-0 mb-4 bg-white">
+                    <div class="card-body">
+                        <h6 class="text-secondary mb-3">Filtros de Búsqueda</h6>
+                        <form id="form-filtros" class="row g-3 align-items-end">
+                            <div class="col-md-3">
+                                <label class="form-label small fw-bold">Unidad</label>
+                                <select id="filtro-unidad" class="form-select shadow-sm"><option value="todas">Todas las unidades</option></select>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label small fw-bold">Periodo</label>
+                                <select id="filtro-periodo" class="form-select shadow-sm" onchange="gestionarFechasFiltro()">
+                                    <option value="hoy">Hoy</option><option value="semana">Esta Semana</option><option value="mes">Este Mes</option><option value="rango">Rango Personalizado...</option>
+                                </select>
+                            </div>
+                            <div class="col-md-2">
+                                <label class="form-label small fw-bold">Desde</label>
+                                <input type="date" id="filtro-desde" class="form-control shadow-sm" disabled>
+                            </div>
+                            <div class="col-md-2">
+                                <label class="form-label small fw-bold">Hasta</label>
+                                <input type="date" id="filtro-hasta" class="form-control shadow-sm" disabled>
+                            </div>
+                            <div class="col-md-2">
+                                <button type="button" class="btn btn-dark w-100 shadow-sm" onclick="generarReporte()">🔍 Generar</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <div class="row mb-3 d-none" id="resumen-reporte">
+                    <div class="col-md-4">
+                        <div class="card bg-light border-dark shadow-sm h-100">
+                            <div class="card-body text-center py-2">
+                                <h6 class="text-secondary mb-0 small text-uppercase fw-bold">Total Filtrado</h6>
+                                <h2 class="mb-0 fw-bold text-dark" id="rep-total">0</h2>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card bg-success text-white shadow-sm h-100">
+                            <div class="card-body text-center py-2">
+                                <h6 class="mb-0 small text-uppercase fw-bold text-white-50">Asistencias Efectivas</h6>
+                                <h2 class="mb-0 fw-bold" id="rep-asistencias">0 <span class="fs-6 opacity-75">(0%)</span></h2>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card bg-danger text-white shadow-sm h-100">
+                            <div class="card-body text-center py-2">
+                                <h6 class="mb-0 small text-uppercase fw-bold text-white-50">Inasistencias Totales</h6>
+                                <h2 class="mb-0 fw-bold" id="rep-inasistencias">0 <span class="fs-6 opacity-75">(0%)</span></h2>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="table-responsive bg-white rounded shadow-sm border-top border-primary border-3">
+                    <table class="table table-hover align-middle bg-white mb-0">
+                        <thead class="table-light">
+                            <tr><th>Fecha</th><th>Hora</th><th>Visitante</th><th>Unidad Destino</th><th>Estado</th></tr>
+                        </thead>
+                        <tbody id="tabla-reportes">
+                            <tr><td colspan="5" class="text-center py-4 text-muted">Aplica los filtros para generar el reporte...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="tab-pane fade" id="usuarios" role="tabpanel">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h5 class="text-secondary mb-0">Directorio de Usuarios</h5>
+                    <button class="btn btn-dark shadow-sm" onclick="abrirModalUsuario()">➕ Nuevo Usuario</button>
+                </div>
+                <div class="table-responsive bg-white rounded shadow-sm border-top border-dark border-3">
+                    <table class="table table-hover align-middle bg-white mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th style="cursor:pointer" onclick="ordenarUsuarios('nombre_completo')">Nombre Completo ↕️</th>
+                                <th style="cursor:pointer" onclick="ordenarUsuarios('username')">Correo ↕️</th>
+                                <th style="cursor:pointer" onclick="ordenarUsuarios('rol')">Rol ↕️</th>
+                                <th style="cursor:pointer" onclick="ordenarUsuarios('unidad')">Unidad ↕️</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tabla-usuarios"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="tab-pane fade" id="unidades" role="tabpanel">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h5 class="text-secondary mb-0">Departamentos y Unidades</h5>
+                    <button class="btn btn-dark shadow-sm" onclick="abrirModalUnidad()">➕ Nueva Unidad</button>
+                </div>
+                <div class="table-responsive bg-white rounded shadow-sm border-top border-dark border-3">
+                    <table class="table table-hover align-middle bg-white mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>ID</th>
+                                <th style="cursor:pointer" onclick="ordenarUnidades('nombre')">Nombre de la Unidad ↕️</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tabla-unidades"></tbody>
+                    </table>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <div class="modal fade" id="modalUsuario" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-dark text-white">
+                    <h5 class="modal-title" id="modalUsuarioTitle">Usuario</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="form-usuario">
+                        <input type="hidden" id="usr-id">
+                        <div class="mb-3"><label class="form-label">Nombre Completo</label><input type="text" id="usr-nombre" class="form-control" required></div>
+                        <div class="mb-3"><label class="form-label">Correo Institucional</label><input type="email" id="usr-email" class="form-control" required></div>
+                        <div class="mb-3"><label class="form-label">Contraseña <span id="usr-pass-hint" class="small text-muted"></span></label><input type="password" id="usr-pass" class="form-control"></div>
+                        <div class="mb-3">
+                            <label class="form-label">Rol</label>
+                            <select id="usr-rol" class="form-select" required>
+                                <option value="1">Administrador</option>
+                                <option value="2">Funcionario</option>
+                                <option value="3">Guardia</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Unidad</label>
+                            <select id="usr-unidad" class="form-select">
+                                <option value="null">Sin Unidad (Global)</option>
+                            </select>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-primary" onclick="guardarUsuario()">Guardar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="modalUnidad" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-dark text-white">
+                    <h5 class="modal-title" id="modalUnidadTitle">Unidad</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" id="uni-id">
+                    <label class="form-label">Nombre de Unidad</label>
+                    <input type="text" id="uni-nombre" class="form-control" required>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-primary" onclick="guardarUnidad()">Guardar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="/admin.js"></script>
+</body>
+</html>
