@@ -1,12 +1,14 @@
+
+
+
 const db = require('../config/database');
 
-// Controlador exclusivo para la vista del guardia
+
 // Controlador exclusivo para la vista del guardia
 exports.getVisitasHoyGuardia = async (req, res) => {
     try {
         const query = 'SELECT * FROM vw_visitas_guardia_hoy';
         
-        // ¡SIN CORCHETES AQUÍ! Lo devolvemos a tu versión original que funcionaba
         const visitas = await db.query(query);
 
         res.json({
@@ -146,3 +148,5 @@ exports.asignarVehiculo = async (req, res) => {
         res.status(500).json({ success: false, message: 'Error interno al registrar el vehículo' });
     }
 };
+
+

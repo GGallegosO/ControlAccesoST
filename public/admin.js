@@ -2,6 +2,15 @@ let listaUsuariosGlobal = [];
 let listaUnidadesGlobal = [];
 let ordenAsc = true;
 
+// Función auxiliar para obtener las cabeceras de configuración con el token incluido de forma automática
+function obtenerHeaders(headersAdicionales = {}) {
+    const token = sessionStorage.getItem('token');
+    return {
+        'Authorization': `Bearer ${token}`,
+        ...headersAdicionales
+    };
+}
+
 document.addEventListener('DOMContentLoaded', () => {
     const userSession = sessionStorage.getItem('user');
     if (!userSession) return window.location.replace('/');
@@ -29,7 +38,7 @@ document.addEventListener('DOMContentLoaded', () => {
 // ==========================================
 async function cargarDashboard() {
     try {
-        const res = await fetch('/api/admin/dashboard/metricas');
+        const res = await fetch('/api/admin/dashboard/metricas', { headers: obtenerHeaders() });
         const data = await res.json();
         if (data.success) {
             document.getElementById('dash-hoy').textContent = data.data.visitasHoy;
@@ -69,7 +78,9 @@ async function generarReporte() {
     if (!fDesde || !fHasta) return alert("Fechas inválidas.");
 
     try {
-        const res = await fetch(`/api/admin/reportes?unidad=${unidad}&fechaDesde=${fDesde}&fechaHasta=${fHasta}`);
+        const res = await fetch(`/api/admin/reportes?unidad=${unidad}&fechaDesde=${fDesde}&fechaHasta=${fHasta}`, {
+            headers: obtenerHeaders()
+        });
         const data = await res.json();
         
         const tbody = document.getElementById('tabla-reportes');
@@ -96,7 +107,6 @@ async function generarReporte() {
                 <td><span class="badge ${color}">${r.estado.replace('_',' ')}</span></td></tr>`;
             });
 
-            // Matemáticas de Gerencia
             let inasistencias = total - asistencias;
             let pctAsistencias = ((asistencias / total) * 100).toFixed(1);
             let pctInasistencias = ((inasistencias / total) * 100).toFixed(1);
@@ -118,7 +128,7 @@ async function generarReporte() {
 // ==========================================
 async function cargarUnidades() {
     try {
-        const res = await fetch('/api/admin/unidades');
+        const res = await fetch('/api/admin/unidades', { headers: obtenerHeaders() });
         const data = await res.json();
         listaUnidadesGlobal = data.data || [];
         renderUnidades();
@@ -170,14 +180,18 @@ async function guardarUnidad() {
     const url = id ? `/api/admin/unidades/${id}` : '/api/admin/unidades';
     const method = id ? 'PUT' : 'POST';
 
-    await fetch(url, { method, headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ nombre }) });
+    await fetch(url, { 
+        method, 
+        headers: obtenerHeaders({'Content-Type': 'application/json'}), 
+        body: JSON.stringify({ nombre }) 
+    });
     bootstrap.Modal.getInstance(document.getElementById('modalUnidad')).hide();
     cargarUnidades();
 }
 
 async function eliminarUnidad(id) {
     if(!confirm('¿Seguro que deseas eliminar esta unidad?')) return;
-    const res = await fetch(`/api/admin/unidades/${id}`, { method: 'DELETE' });
+    const res = await fetch(`/api/admin/unidades/${id}`, { method: 'DELETE', headers: obtenerHeaders() });
     const data = await res.json();
     if(!data.success) alert(data.message);
     cargarUnidades();
@@ -188,7 +202,7 @@ async function eliminarUnidad(id) {
 // ==========================================
 async function cargarUsuarios() {
     try {
-        const res = await fetch('/api/admin/usuarios');
+        const res = await fetch('/api/admin/usuarios', { headers: obtenerHeaders() });
         const data = await res.json();
         listaUsuariosGlobal = data.data || [];
         renderUsuarios();
@@ -214,6 +228,7 @@ function renderUsuarios() {
     });
 }
 
+// Ordenar usuarios
 function ordenarUsuarios(col) {
     ordenAsc = !ordenAsc;
     listaUsuariosGlobal.sort((a, b) => {
@@ -253,13 +268,17 @@ async function guardarUsuario() {
     const url = id ? `/api/admin/usuarios/${id}` : '/api/admin/usuarios';
     const method = id ? 'PUT' : 'POST';
 
-    await fetch(url, { method, headers: {'Content-Type': 'application/json'}, body: JSON.stringify(data) });
+    await fetch(url, { 
+        method, 
+        headers: obtenerHeaders({'Content-Type': 'application/json'}), 
+        body: JSON.stringify(data) 
+    });
     bootstrap.Modal.getInstance(document.getElementById('modalUsuario')).hide();
     cargarUsuarios();
 }
 
 async function eliminarUsuario(id) {
     if(!confirm('¿Eliminar este usuario definitivamente?')) return;
-    await fetch(`/api/admin/usuarios/${id}`, { method: 'DELETE' });
+    await fetch(`/api/admin/usuarios/${id}`, { method: 'DELETE', headers: obtenerHeaders() });
     cargarUsuarios();
 }
