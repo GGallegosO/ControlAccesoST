@@ -1,9 +1,14 @@
+let todosLosEventosDelDia = [];
+let pestañaActiva = 'propios';
 
+let columnaOrdenActual = 'hora_visita'; 
+let ordenAscendente = true;
 
 // ==========================================
 // 1. INICIALIZACIÓN Y SEGURIDAD AL CARGAR
 // ==========================================
 document.addEventListener('DOMContentLoaded', async () => {
+    
     
 
     const savedUser = sessionStorage.getItem('user');
@@ -30,7 +35,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     // OBTENER FECHAS CON EVENTOS DESDE EL BACKEND
     let fechasDestacadas = [];
     try {
-        const resFechas = await fetch(`/api/funcionario/fechas-con-eventos?unidad=${idUnidad}`);
+        const resFechas = await fetch(`/api/funcionario/fechas-con-eventos?unidad=${idUnidad}&id_usuario=${idUsuario}`);
         const resultFechas = await resFechas.json();
         if (resultFechas.success) {
             fechasDestacadas = resultFechas.data;
@@ -62,11 +67,16 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     });
 
-    // Iniciar la carga de datos de la tabla para hoy
-    const hoy = new Date().toISOString().split('T')[0];
+    // Iniciar la carga de datos por primera vez (con la fecha de hoy EXACTA local)
+    const fechaObj = new Date();
+    const año = fechaObj.getFullYear();
+    const mes = String(fechaObj.getMonth() + 1).padStart(2, '0');
+    const dia = String(fechaObj.getDate()).padStart(2, '0');
+    const hoy = `${año}-${mes}-${dia}`; 
+    
     cargarMetricas(idUsuario, hoy);
     cargarMisEventos(idUsuario, hoy);
-    // Cargar la lista de colegas para el modal
+
     cargarColegasParaInvitacion(idUsuario);
 });
 
@@ -85,9 +95,9 @@ async function cargarColegasParaInvitacion(miIdUsuario) {
         
         if (result.success && result.data.length > 0) {
             result.data.forEach(colega => {
-                // Dibujamos un checkbox estilizado de Bootstrap por cada colega
+                
                 contenedor.innerHTML += `
-                    <div class="form-check mb-1 border-bottom pb-1">
+                    <div class="form-check mb-1 border-bottom pb-1 colega-item">
                         <input class="form-check-input coanfitrion-checkbox cursor-pointer" type="checkbox" value="${colega.id_usuario}" id="colega_${colega.id_usuario}">
                         <label class="form-check-label small cursor-pointer w-100" for="colega_${colega.id_usuario}">
                             <strong>${colega.nombre_completo}</strong> <span class="text-muted">(${colega.unidad})</span>
@@ -108,7 +118,7 @@ async function cargarMetricas(idUsuario, fecha) {
     const user = JSON.parse(sessionStorage.getItem('user'));
     
     try {
-        const respuesta = await fetch(`/api/funcionario/metricas?unidad=${user.id_unidad}&fecha=${fecha}`);
+        const respuesta = await fetch(`/api/funcionario/metricas?unidad=${user.id_unidad}&fecha=${fecha}&id_usuario=${idUsuario}`);
         const result = await respuesta.json();
         
         if (result.success) {
@@ -132,45 +142,124 @@ async function cargarMetricas(idUsuario, fecha) {
 }
 
 async function cargarMisEventos(idUsuario, fecha) {
-    const user = JSON.parse(sessionStorage.getItem('user'));
-    const tbody = document.getElementById('cuerpo-tabla-eventos');
-    tbody.innerHTML = '<tr><td colspan="4" class="text-center text-muted py-4">Buscando eventos...</td></tr>';
-    
     try {
-        const respuesta = await fetch(`/api/funcionario/eventos?unidad=${user.id_unidad}&fecha=${fecha}`);
+        const user = JSON.parse(sessionStorage.getItem('user'));
+        const respuesta = await fetch(`/api/funcionario/eventos?unidad=${user.id_unidad}&fecha=${fecha}&id_usuario=${idUsuario}`);
         const result = await respuesta.json();
 
-        if (result.success && result.data.length > 0) {
-            tbody.innerHTML = ''; // Limpiamos la tabla
-            
-            result.data.forEach(visita => {
-                // Formateamos la hora (Ej: de "14:00:00" a "14:00")
-                const horaLimpia = visita.hora_visita.substring(0, 5);
-                
-                // Le damos colores bonitos a los estados
-                let colorEstado = 'bg-secondary';
-                if (visita.estado_visita === 'PROGRAMADA') colorEstado = 'bg-primary';
-                if (visita.estado_visita === 'INGRESO_REGISTRADO') colorEstado = 'bg-success';
-                if (visita.estado_visita === 'NO_ASISTIO') colorEstado = 'bg-danger';
-
-                tbody.innerHTML += `
-                    <tr>
-                        <td class="fw-bold">${horaLimpia}</td>
-                        <td>${visita.visitante}</td>
-                        <td>${visita.motivo}</td>
-                        <td><span class="badge ${colorEstado}">${visita.estado_visita.replace('_', ' ')}</span></td>
-                    </tr>
-                `;
-            });
-        } else {
-            tbody.innerHTML = `<tr><td colspan="4" class="text-center text-muted py-4">No hay visitas programadas para el ${fecha}.</td></tr>`;
+        if (result.success) {
+            // Guardamos la respuesta globalmente
+            todosLosEventosDelDia = result.data || [];
+            // Mandamos a renderizar pasándole la fecha para los botones
+            renderizarTablaEventos(fecha); 
         }
-
     } catch (error) {
-        console.error("Error al cargar la tabla:", error);
-        tbody.innerHTML = '<tr><td colspan="4" class="text-center text-danger py-4">Error de conexión.</td></tr>';
+        console.error("Error al cargar eventos:", error);
     }
 }
+
+
+function renderizarTablaEventos(fecha) {
+    const tbody = document.getElementById('cuerpo-tabla-eventos');
+    tbody.innerHTML = ''; // Limpiamos la tabla siempre al inicio
+
+    const userSession = JSON.parse(sessionStorage.getItem('user'));
+    const miUnidad = userSession.id_unidad;
+
+    // FILTRADO INTELIGENTE: Filtramos el array global según la pestaña activa
+    const eventosFiltrados = todosLosEventosDelDia.filter(visita => {
+        if (pestañaActiva === 'propios') {
+            return visita.id_unidad === miUnidad; // Mis eventos
+        } else {
+            return visita.id_unidad !== miUnidad; // Compartidos conmigo
+        }
+    });
+
+    // Si no hay datos para esta pestaña, cortamos el flujo de inmediato
+    if (eventosFiltrados.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="6" class="text-center text-muted py-4">No hay visitas en esta sección.</td></tr>`;
+        return;
+    }
+
+    //  RENDERIZADO: El bloque exacto que tú ya armaste
+    eventosFiltrados.forEach(visita => {
+        const horaLimpia = visita.hora_visita.substring(0, 5);
+        
+        let colorEstado = 'bg-secondary';
+        if (visita.estado_visita === 'PROGRAMADA') colorEstado = 'bg-primary';
+        if (visita.estado_visita === 'INGRESO_REGISTRADO') colorEstado = 'bg-success';
+        if (visita.estado_visita === 'NO_ASISTIO') colorEstado = 'bg-danger';
+        if (visita.estado_visita === 'CANCELADA') colorEstado = 'bg-danger';
+
+        let textoCoanfitriones = '-';
+        if (visita.coanfitriones_nombres) {
+            const listaNombres = visita.coanfitriones_nombres.split(', ');
+            if (listaNombres.length > 1) {
+                textoCoanfitriones = `${listaNombres[0]} <span class="badge bg-light text-secondary border">+${listaNombres.length - 1}</span>`;
+            } else {
+                textoCoanfitriones = listaNombres[0];
+            }
+        }
+        
+        const idsCo = visita.coanfitriones_ids || '';
+
+        // Lógica de botones condicionada a la pestaña activa
+        let btnInvitar = '';
+        let btnCancelar = '';
+        
+        if (pestañaActiva === 'propios') {
+            btnInvitar = `<button class="btn btn-sm btn-outline-primary py-0 px-2" onclick="abrirModalExtra('${fecha}', '${visita.hora_visita}', '${visita.motivo}', '${idsCo}', '${visita.id_visita}')" title="Sumar Colegas">👥</button>`;
+            
+            if (visita.estado_visita === 'PROGRAMADA') {
+                btnCancelar = `<button class="btn btn-sm btn-outline-danger py-0 px-2 ms-1" onclick="cancelarVisita(${visita.id_visita}, '${fecha}')" title="Cancelar Visita">❌</button>`;
+            }
+        }
+
+        tbody.innerHTML += `
+            <tr>
+                <td class="fw-bold">${horaLimpia}</td>
+                <td>${visita.visitante}</td>
+                <td>${visita.motivo}</td>
+                <td class="small text-muted">${textoCoanfitriones}</td>
+                <td><span class="badge ${colorEstado}">${visita.estado_visita.replace('_', ' ')}</span></td>
+                <td>
+                    ${btnInvitar}
+                    ${btnCancelar}
+                </td>
+            </tr>
+        `;
+    });
+}
+
+
+function aplicarFiltroPestañas(tipo) {
+    pestañaActiva = tipo;
+    
+    const btnPropios = document.getElementById('tab-propios');
+    const btnCompartidos = document.getElementById('tab-compartidos');
+
+    if (tipo === 'propios') {
+        btnPropios.classList.add('text-success');
+        btnPropios.classList.remove('text-secondary', 'bg-light');
+        btnCompartidos.classList.add('text-secondary', 'bg-light');
+        btnCompartidos.classList.remove('text-success');
+    } else {
+        btnCompartidos.classList.add('text-success');
+        btnCompartidos.classList.remove('text-secondary', 'bg-light');
+        btnPropios.classList.add('text-secondary', 'bg-light');
+        btnPropios.classList.remove('text-success');
+    }
+
+    // Averiguamos qué fecha está seleccionada internamente en el modal oculto para mantener la consistencia
+    const fechaActual = document.getElementById('extra-fecha') ? document.getElementById('extra-fecha').value : new Date().toISOString().split('T')[0];
+    
+    // Redibujamos instantáneamente sin golpear la base de datos de nuevo
+    renderizarTablaEventos(fechaActual);
+}
+
+
+
+
 
 // ==========================================
 // 3. LÓGICA DEL FORMULARIO DE NUEVO EVENTO
@@ -348,3 +437,311 @@ function formatearInputRUT(input) {
     input.value = valor;
 }
 
+
+
+// ==========================================
+// 5. EDICIÓN RÁPIDA: SUMAR COLEGAS A EVENTO EXISTENTE
+// ==========================================
+
+function abrirModalExtra(fecha, hora, motivo, idsCoanfitrionesGuardados) {
+    document.getElementById('extra-fecha').value = fecha;
+    document.getElementById('extra-hora').value = hora;
+    document.getElementById('extra-motivo').value = motivo;
+
+    const contenedorOriginal = document.getElementById('contenedor-coanfitriones').innerHTML;
+    const contenedorExtra = document.getElementById('contenedor-coanfitriones-extra');
+    
+    // Clonamos el HTML y cambiamos ambas clases
+    let nuevoHTML = contenedorOriginal.replace(/coanfitrion-checkbox/g, 'coanfitrion-extra-checkbox');
+    nuevoHTML = nuevoHTML.replace(/colega-item/g, 'colega-extra-item');
+    contenedorExtra.innerHTML = nuevoHTML;
+
+    // Limpiamos la barra de búsqueda por si quedó algo escrito de la vez anterior
+    document.getElementById('buscador-extra').value = '';
+
+    // Marcar los que ya están invitados
+    if (idsCoanfitrionesGuardados) {
+        const idsArray = idsCoanfitrionesGuardados.split(',');
+        const checkboxes = document.querySelectorAll('.coanfitrion-extra-checkbox');
+        
+        checkboxes.forEach(cb => {
+            if (idsArray.includes(cb.value)) {
+                cb.checked = true;
+            }
+        });
+    }
+
+    const modal = new bootstrap.Modal(document.getElementById('modalAgregarExtra'));
+    modal.show();
+}
+
+
+
+
+async function guardarCoanfitrionesExtra() {
+    // Atrapamos los checks marcados en ESTE modal
+    const checkboxes = document.querySelectorAll('.coanfitrion-extra-checkbox:checked');
+    const colegasSeleccionados = Array.from(checkboxes).map(cb => cb.value);
+
+    if (colegasSeleccionados.length === 0) {
+        alert("Debes seleccionar al menos un colega.");
+        return;
+    }
+
+    const user = JSON.parse(sessionStorage.getItem('user'));
+    
+    
+    const paqueteExtra = {
+        id_visita_referencia: document.getElementById('extra-id-visita').value,
+        coanfitriones: colegasSeleccionados
+    };
+
+    try {
+        const respuesta = await fetch('/api/funcionario/agregar-coanfitriones', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(paqueteExtra)
+        });
+
+        const resultado = await respuesta.json();
+
+        if (resultado.success) {
+            alert('¡Funcionarios actualizados exitosamente!');
+            const modal = bootstrap.Modal.getInstance(document.getElementById('modalAgregarExtra'));
+            modal.hide();
+            
+            //Recargar la tabla automáticamente con la fecha actual
+            const user = JSON.parse(sessionStorage.getItem('user'));
+            const idUsuario = user.id_usuario || user.id;
+            const fechaActual = document.getElementById('extra-fecha').value;
+            cargarMisEventos(idUsuario, fechaActual); 
+        } else {
+            alert('Error al guardar: ' + resultado.message);
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        alert('Hubo un problema de conexión.');
+    }
+}
+
+// ==========================================
+// 6. UTILIDADES UI: SELECCIONAR TODOS
+// ==========================================
+
+function toggleTodos(claseCheckbox) {
+    // Buscamos todos los checkboxes que pertenezcan a la clase que nos enviaron
+    const checkboxes = document.querySelectorAll(`.${claseCheckbox}`);
+    if (checkboxes.length === 0) return;
+
+    // Revisamos si actualmente TODOS están marcados
+    const todosMarcados = Array.from(checkboxes).every(cb => cb.checked);
+
+    // Si todos están marcados, los desmarcamos (false). Si falta alguno, los marcamos todos (true).
+    checkboxes.forEach(cb => {
+        cb.checked = !todosMarcados;
+    });
+}
+
+
+// ==========================================
+// 7. UTILIDADES UI: BUSCADOR DE COLEGAS EN TIEMPO REAL
+// ==========================================
+
+function filtrarColegas(inputElement, claseItem) {
+    const filtro = inputElement.value.toLowerCase(); // Lo que escribió el usuario, en minúsculas
+    const items = document.querySelectorAll(`.${claseItem}`); // Todos los colegas de esa lista
+    
+    items.forEach(item => {
+        const textoColega = item.innerText.toLowerCase(); // El nombre y unidad del colega
+        
+        // Si el texto incluye lo que el usuario busca, lo mostramos. Si no, lo escondemos.
+        if (textoColega.includes(filtro)) {
+            item.style.display = ''; 
+        } else {
+            item.style.display = 'none'; 
+        }
+    });
+}
+
+
+// ==========================================
+// 8. ACCIONES DE VISITA: CANCELAR
+// ==========================================
+
+async function cancelarVisita(idVisita, fechaActual) {
+    // 1. Confirmación de seguridad
+    if (!confirm("¿Estás seguro de que deseas cancelar esta visita? Esta acción no se puede deshacer.")) {
+        return;
+    }
+
+    // 2. Llamada al backend
+    try {
+        const respuesta = await fetch(`/api/funcionario/visita/${idVisita}/cancelar`, {
+            method: 'PUT'
+        });
+        
+        const resultado = await respuesta.json();
+
+        if (resultado.success) {
+            // 3. Recargar la vista para reflejar los cambios mágicamente
+            const user = JSON.parse(sessionStorage.getItem('user'));
+            const idUsuario = user.id_usuario || user.id;
+            
+            cargarMetricas(idUsuario, fechaActual);
+            cargarMisEventos(idUsuario, fechaActual);
+        } else {
+            alert('Error al cancelar: ' + resultado.message);
+        }
+    } catch (error) {
+        console.error("Error en la cancelación:", error);
+        alert("Hubo un problema de conexión con el servidor.");
+    }
+}
+
+
+// ==========================================
+// 9. LÓGICA DE PESTAÑAS Y RENDERIZADO
+// ==========================================
+
+function aplicarFiltroPestañas(tipo) {
+    pestañaActiva = tipo;
+    
+    // Cambios visuales sutiles para las pestañas
+    const btnPropios = document.getElementById('tab-propios');
+    const btnCompartidos = document.getElementById('tab-compartidos');
+
+    if(tipo === 'propios') {
+        btnPropios.classList.add('text-success');
+        btnPropios.classList.remove('text-secondary', 'bg-light');
+        btnCompartidos.classList.add('text-secondary', 'bg-light');
+        btnCompartidos.classList.remove('text-success');
+    } else {
+        btnCompartidos.classList.add('text-success');
+        btnCompartidos.classList.remove('text-secondary', 'bg-light');
+        btnPropios.classList.add('text-secondary', 'bg-light');
+        btnPropios.classList.remove('text-success');
+    }
+
+    // Redibujamos la tabla con el nuevo filtro
+    renderizarTablaEventos();
+}
+
+
+
+function renderizarTablaEventos(fecha) {
+    const tbody = document.getElementById('cuerpo-tabla-eventos');
+    tbody.innerHTML = ''; 
+
+    const userSession = JSON.parse(sessionStorage.getItem('user'));
+    const miUnidad = userSession.id_unidad;
+
+    //  Mostrar u ocultar el encabezado de "Acción" según la pestaña
+    const thAccion = document.getElementById('th-accion');
+    if (pestañaActiva === 'propios') {
+        thAccion.style.display = ''; // Lo mostramos
+    } else {
+        thAccion.style.display = 'none'; // Lo ocultamos
+    }
+
+    const eventosFiltrados = todosLosEventosDelDia.filter(visita => {
+        if (pestañaActiva === 'propios') {
+            return visita.id_unidad === miUnidad; 
+        } else {
+            return visita.id_unidad !== miUnidad; 
+        }
+    });
+
+    if (eventosFiltrados.length === 0) {
+        // Ajustamos el colspan dependiendo de si la columna Acción está visible o no
+        const columnasTotales = pestañaActiva === 'propios' ? 6 : 5;
+        tbody.innerHTML = `<tr><td colspan="${columnasTotales}" class="text-center text-muted py-4">No hay visitas en esta sección.</td></tr>`;
+        return;
+    }
+
+    eventosFiltrados.forEach(visita => {
+        const horaLimpia = visita.hora_visita.substring(0, 5);
+        
+        let colorEstado = 'bg-secondary';
+        if (visita.estado_visita === 'PROGRAMADA') colorEstado = 'bg-primary';
+        if (visita.estado_visita === 'INGRESO_REGISTRADO') colorEstado = 'bg-success';
+        if (visita.estado_visita === 'NO_ASISTIO') colorEstado = 'bg-danger';
+        if (visita.estado_visita === 'CANCELADA') colorEstado = 'bg-danger';
+
+        let textoCoanfitriones = '-';
+        if (visita.coanfitriones_nombres) {
+            const listaNombres = visita.coanfitriones_nombres.split(', ');
+            if (listaNombres.length > 1) {
+                textoCoanfitriones = `${listaNombres[0]} <span class="badge bg-light text-secondary border">+${listaNombres.length - 1}</span>`;
+            } else {
+                textoCoanfitriones = listaNombres[0];
+            }
+        }
+        
+        const idsCo = visita.coanfitriones_ids || '';
+
+        //  Construir la celda completa de Acción SOLO si es la pestaña 'propios'
+        let celdaAccionHtml = '';
+        
+        if (pestañaActiva === 'propios') {
+            let btnInvitar = `<button class="btn btn-sm btn-outline-primary py-0 px-2" onclick="abrirModalExtra('${fecha}', '${visita.hora_visita}', '${visita.motivo}', '${idsCo}', '${visita.id_visita}')" title="Sumar Colegas">👥</button>`;
+            let btnCancelar = '';
+            
+            if (visita.estado_visita === 'PROGRAMADA') {
+                btnCancelar = `<button class="btn btn-sm btn-outline-danger py-0 px-2 ms-1" onclick="cancelarVisita(${visita.id_visita}, '${fecha}')" title="Cancelar Visita">❌</button>`;
+            }
+            
+            // Envolvemos los botones en su <td> correspondiente
+            celdaAccionHtml = `<td>${btnInvitar} ${btnCancelar}</td>`;
+        }
+
+        tbody.innerHTML += `
+            <tr>
+                <td class="fw-bold">${horaLimpia}</td>
+                <td>${visita.visitante}</td>
+                <td>${visita.motivo}</td>
+                <td class="small text-muted">${textoCoanfitriones}</td>
+                <td><span class="badge ${colorEstado}">${visita.estado_visita.replace('_', ' ')}</span></td>
+                ${celdaAccionHtml} </tr>
+        `;
+    });
+}
+
+
+// ==========================================
+// 10. LÓGICA DE ORDENAMIENTO DE COLUMNAS
+// ==========================================
+
+function ordenarTabla(columna) {
+    //  Si clickeamos la misma columna, invertimos el orden (de A-Z a Z-A)
+    if (columnaOrdenActual === columna) {
+        ordenAscendente = !ordenAscendente;
+    } else {
+        // Si es una columna nueva, la guardamos y empezamos de A-Z
+        columnaOrdenActual = columna;
+        ordenAscendente = true; 
+    }
+
+    // Ordenamos nuestro array global de datos
+    todosLosEventosDelDia.sort((a, b) => {
+        let valorA = a[columna];
+        let valorB = b[columna];
+
+        // Protección contra valores nulos
+        if (!valorA) valorA = '';
+        if (!valorB) valorB = '';
+
+        
+        if (typeof valorA === 'string') valorA = valorA.toLowerCase();
+        if (typeof valorB === 'string') valorB = valorB.toLowerCase();
+
+        // Lógica matemática de ordenamiento
+        if (valorA < valorB) return ordenAscendente ? -1 : 1;
+        if (valorA > valorB) return ordenAscendente ? 1 : -1;
+        return 0; // Si son exactamente iguales
+    });
+
+    // Volvemos a dibujar la tabla
+    // Usamos la fecha oculta para no perder el contexto
+    const fechaActual = document.getElementById('extra-fecha') ? document.getElementById('extra-fecha').value : new Date().toISOString().split('T')[0];
+    renderizarTablaEventos(fechaActual);
+}

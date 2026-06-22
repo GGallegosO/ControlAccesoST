@@ -1,4 +1,4 @@
-const mysql = require('mysql2/promise'); // <--- IMPORTANTE: Usar la versión promise
+const mysql = require('mysql2/promise'); 
 require('dotenv').config();
 
 let pool;

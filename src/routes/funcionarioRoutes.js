@@ -9,5 +9,7 @@ router.get('/eventos', funcionarioController.obtenerEventos);
 router.get('/metricas', funcionarioController.obtenerMetricas);
 router.get('/fechas-con-eventos', funcionarioController.obtenerFechasEventos);
 router.get('/colegas', funcionarioController.obtenerColegas);
+router.post('/agregar-coanfitriones', funcionarioController.agregarCoanfitrionesExtra);
+router.put('/visita/:id_visita/cancelar', funcionarioController.cancelarVisita);
 
 module.exports = router;
