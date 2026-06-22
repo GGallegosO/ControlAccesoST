@@ -63,21 +63,28 @@ exports.crearEvento = async (req, res) => {
     }
 };
 
+
+
 exports.obtenerEventos = async (req, res) => {
     try {
-        const { unidad, fecha } = req.query;
+        const { unidad, fecha, id_usuario } = req.query; // ¡Agregamos id_usuario!
         
         const query = `
-            SELECT v.hora_visita, vi.nombre_completo AS visitante, v.descripcion AS motivo, v.estado_visita
+            SELECT v.id_visita, v.id_unidad, v.hora_visita, vi.nombre_completo AS visitante, v.descripcion AS motivo, v.estado_visita,
+                GROUP_CONCAT(u.nombre_completo SEPARATOR ', ') AS coanfitriones_nombres,
+                GROUP_CONCAT(u.id_usuario SEPARATOR ',') AS coanfitriones_ids
             FROM VISITA v
             JOIN VISITANTE vi ON v.id_visitante = vi.id_visitante
-            WHERE v.id_unidad = ? AND v.fecha_visita = ?
+            LEFT JOIN VISITA_ANFITRION va ON v.id_visita = va.id_visita
+            LEFT JOIN USUARIO u ON va.id_usuario = u.id_usuario
+            -- MAGIA SQL: Filtramos por la unidad del creador O por si el usuario es co-anfitrión
+            WHERE (v.id_unidad = ? OR v.id_visita IN (SELECT id_visita FROM VISITA_ANFITRION WHERE id_usuario = ?)) 
+            AND v.fecha_visita = ?
+            GROUP BY v.id_visita, v.id_unidad, v.hora_visita, vi.nombre_completo, v.descripcion, v.estado_visita
             ORDER BY v.hora_visita ASC
         `;
         
-        // Recuerda: sin corchetes porque tu bd devuelve el arreglo directo
-        const visitas = await db.query(query, [unidad, fecha]);
-        
+        const visitas = await db.query(query, [unidad, id_usuario, fecha]);
         res.json({ success: true, data: visitas });
     } catch (error) {
         console.error('Error al obtener eventos:', error);
@@ -87,18 +94,18 @@ exports.obtenerEventos = async (req, res) => {
 
 exports.obtenerMetricas = async (req, res) => {
     try {
-        const { unidad, fecha } = req.query;
+        const { unidad, fecha, id_usuario } = req.query; // Ahora recibimos id_usuario
         
         const query = `
             SELECT 
                 COUNT(*) as programadas,
                 COALESCE(SUM(CASE WHEN estado_visita = 'INGRESO_REGISTRADO' THEN 1 ELSE 0 END), 0) as ingresos
-            FROM VISITA
-            WHERE id_unidad = ? AND fecha_visita = ?
+            FROM VISITA v
+            WHERE (v.id_unidad = ? OR v.id_visita IN (SELECT id_visita FROM VISITA_ANFITRION WHERE id_usuario = ?))
+            AND v.fecha_visita = ?
         `;
         
-        const resultados = await db.query(query, [unidad, fecha]);
-        
+        const resultados = await db.query(query, [unidad, id_usuario, fecha]);
         res.json({ success: true, data: resultados[0] });
     } catch (error) {
         console.error('Error al obtener métricas:', error);
@@ -109,17 +116,16 @@ exports.obtenerMetricas = async (req, res) => {
 
 exports.obtenerFechasEventos = async (req, res) => {
     try {
-        const { unidad } = req.query;
+        const { unidad, id_usuario } = req.query; 
         
         const query = `
             SELECT DISTINCT DATE_FORMAT(fecha_visita, '%Y-%m-%d') as fecha 
-            FROM VISITA 
-            WHERE id_unidad = ? AND estado_visita != 'CANCELADA'
+            FROM VISITA v
+            WHERE (v.id_unidad = ? OR v.id_visita IN (SELECT id_visita FROM VISITA_ANFITRION WHERE id_usuario = ?))
+            AND v.estado_visita != 'CANCELADA'
         `;
         
-        const fechas = await db.query(query, [unidad]);
-        
-        // Extraemos solo el texto de las fechas para enviar un arreglo limpio: ['2026-06-20', '2026-06-21']
+        const fechas = await db.query(query, [unidad, id_usuario]);
         const arrayFechas = fechas.map(f => f.fecha);
         
         res.json({ success: true, data: arrayFechas });
@@ -143,6 +149,60 @@ exports.obtenerColegas = async (req, res) => {
         res.json({ success: true, data: colegas });
     } catch (error) {
         console.error('Error al obtener colegas:', error);
+        res.status(500).json({ success: false, message: 'Error del servidor' });
+    }
+};
+
+
+
+
+exports.agregarCoanfitrionesExtra = async (req, res) => {
+    try {
+        const { id_visita_referencia, coanfitriones } = req.body;
+
+        // 1. Buscamos el evento original guiándonos por el ticket de referencia
+        const queryReferencia = 'SELECT id_unidad, fecha_visita, hora_visita, descripcion FROM VISITA WHERE id_visita = ?';
+        const refResult = await db.query(queryReferencia, [id_visita_referencia]);
+        if (refResult.length === 0) return res.status(404).json({ success: false, message: 'Evento no encontrado' });
+        const ref = refResult[0];
+
+        // 2. Buscamos a TODOS los visitantes de esa reunión (ahora usando la unidad correcta)
+        const queryVisitas = 'SELECT id_visita FROM VISITA WHERE id_unidad = ? AND fecha_visita = ? AND hora_visita = ? AND descripcion = ?';
+        const visitas = await db.query(queryVisitas, [ref.id_unidad, ref.fecha_visita, ref.hora_visita, ref.descripcion]);
+
+        if (visitas.length > 0) {
+            const idsVisitas = visitas.map(v => v.id_visita);
+            await db.query('DELETE FROM VISITA_ANFITRION WHERE id_visita IN (?)', [idsVisitas]); // Limpiar
+
+            if (coanfitriones && coanfitriones.length > 0) {
+                for (let idVisita of idsVisitas) {
+                    for (let idColega of coanfitriones) {
+                        await db.query('INSERT INTO VISITA_ANFITRION (id_visita, id_usuario) VALUES (?, ?)', [idVisita, idColega]);
+                    }
+                }
+            }
+        }
+        res.json({ success: true, message: 'Colegas actualizados exitosamente' });
+
+    } catch (error) {
+        console.error('Error al actualizar:', error);
+        res.status(500).json({ success: false, message: 'Error del servidor' });
+    }
+};
+
+
+
+exports.cancelarVisita = async (req, res) => {
+    try {
+        const { id_visita } = req.params;
+        
+        // Cambiamos el estado a CANCELADA solo si la visita existe
+        const query = "UPDATE VISITA SET estado_visita = 'CANCELADA' WHERE id_visita = ?";
+        await db.query(query, [id_visita]);
+        
+        res.json({ success: true, message: 'Visita cancelada exitosamente' });
+    } catch (error) {
+        console.error('Error al cancelar visita:', error);
         res.status(500).json({ success: false, message: 'Error del servidor' });
     }
 };
