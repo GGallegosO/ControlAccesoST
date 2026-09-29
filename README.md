@@ -1,5 +1,15 @@
 # Sistema de Registro y Control de Acceso - Sede San Joaquín
 
+![Node.js Version](https://img.shields.io/badge/Node.js-v18%2B-339933?style=for-the-badge&amp;logo=nodedotjs&amp;logoColor=white) 
+![JavaScript](https://img.shields.io/badge/JavaScript-ES6%2B-F7DF1E?style=for-the-badge&amp;logo=javascript&amp;logoColor=black) 
+![Express.js](https://img.shields.io/badge/Express.js-000000?style=for-the-badge&amp;logo=express&amp;logoColor=white) 
+![MySQL](https://img.shields.io/badge/MySQL-8.0-4479A1?style=for-the-badge&amp;logo=mysql&amp;logoColor=white)  
+![JWT](https://img.shields.io/badge/JWT-JSON\_Web\_Token-000000?style=for-the-badge&amp;logo=jsonwebtokens&amp;logoColor=white) 
+![HTML5](https://img.shields.io/badge/HTML5-E34F26?style=for-the-badge&amp;logo=html5&amp;logoColor=white) 
+![CSS3](https://img.shields.io/badge/CSS3-1572B6?style=for-the-badge&amp;logo=css3&amp;logoColor=white)
+
+
+
 Este proyecto es una plataforma web full-stack diseñada para la gestión, control y auditoría del flujo de visitas vehiculares y peatonales de la institución. El sistema optimiza la comunicación entre tres perfiles clave de usuarios (Administradores, Funcionarios y Guardias de Seguridad), garantizando la integridad de los datos y la seguridad perimetral de la sede.
 
 ---
